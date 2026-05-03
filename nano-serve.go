@@ -108,20 +108,16 @@ func (n *NanoServe) Use(pathOrHandler any, handlers ...HandlerFunction) {
 
 // Our Main Handler which will handle the incoming request
 func (n *NanoServe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
 	match := n.router.Search(r.Method, r.URL.Path)
-	c := &Context{
-		Writer:   w,
-		Request:  r,
-		handlers: match.Handler,
-		index:    0,
-		params: match.Params,
-	}
+
+	c := NewContext(w, r, match.Handler, match.Params)
+
 	if len(c.handlers) > 0 {
 		if err := c.handlers[0](c); err != nil {
 			n.ErrorHandler(c, err)
 		}
 		return
 	}
-	http.NotFound(w,r)
+
+	http.NotFound(w, r)
 }

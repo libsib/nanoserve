@@ -88,7 +88,7 @@ func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction)
 	}
 
 	segments := strings.Split(path, "/")
-	routeParams := map[string]interface{}{}
+	routeParams := map[string] any{}
 	for i, element := range segments {
 		if element == "" {
 			continue
@@ -148,6 +148,7 @@ func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 		if len(node.middlewares) > 0 {
 			if !copied {
 				collected = append([]HandlerFunction{}, collected...)
+				copied = true
 			}
 			collected = append(collected, node.middlewares...)
 		}

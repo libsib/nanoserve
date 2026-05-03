@@ -15,8 +15,18 @@ type Context struct {
 	handlers []HandlerFunction
 	index    int
 
-	contextData map[string]interface{}
+	contextData map[string]any
 	statusCode  int
+}
+
+func NewContext(w http.ResponseWriter, r *http.Request, handlers []HandlerFunction, params map[string]string) *Context {
+	return &Context{
+		Writer:      w,
+		Request:     r,
+		handlers:    handlers,
+		params:      params,
+		index:       0,
+	}
 }
 
 func (c *Context) Next() error {
@@ -39,10 +49,13 @@ func (c *Context) writeStatus() {
 }
 
 func (c *Context) Set(key string, value any) {
+	if c.contextData == nil {
+		c.contextData = make(map[string]any)
+	}
 	c.contextData[key] = value
 }
 
-func (c *Context) Get(key string) interface{} {
+func (c *Context) Get(key string) any {
 	return c.contextData[key]
 }
 
