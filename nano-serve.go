@@ -2,6 +2,7 @@ package nanoserve
 
 import (
 	"net/http"
+	"strings"
 )
 
 type HandlerFunction func(*Context) error
@@ -22,44 +23,70 @@ func New() *NanoServe {
 	}
 }
 
-func (n *NanoServe) GET(path string, h ...HandlerFunction) {
+func (n *NanoServe) GET(path string, h ...HandlerFunction) *NanoServe {
 	n.addRoute(http.MethodGet, path, h...)
+	return n
 }
 
-func (n *NanoServe) POST(path string, h ...HandlerFunction) {
+func (n *NanoServe) POST(path string, h ...HandlerFunction) *NanoServe {
 	n.addRoute(http.MethodPost, path, h...)
+	return n
+
 }
 
-func (n *NanoServe) PUT(path string, h ...HandlerFunction) {
+func (n *NanoServe) PUT(path string, h ...HandlerFunction) *NanoServe {
 	n.addRoute(http.MethodPut, path, h...)
+	return n
+
 }
 
-func (n *NanoServe) PATCH(path string, h ...HandlerFunction) {
+func (n *NanoServe) PATCH(path string, h ...HandlerFunction) *NanoServe {
 	n.addRoute(http.MethodPatch, path, h...)
+	return n
+
 }
 
-func (n *NanoServe) DELETE(path string, h ...HandlerFunction) {
+func (n *NanoServe) DELETE(path string, h ...HandlerFunction) *NanoServe {
 	n.addRoute(http.MethodDelete, path, h...)
+	return n
+
 }
 
-func (n *NanoServe) HEAD(path string, h ...HandlerFunction) {
+func (n *NanoServe) HEAD(path string, h ...HandlerFunction) *NanoServe {
 	n.addRoute(http.MethodHead, path, h...)
+	return n
+
 }
 
-func (n *NanoServe) OPTIONS(path string, h ...HandlerFunction) {
+func (n *NanoServe) OPTIONS(path string, h ...HandlerFunction) *NanoServe {
 	n.addRoute(http.MethodOptions, path, h...)
+	return n
+
 }
 
-func (n *NanoServe) CONNECT(path string, h ...HandlerFunction) {
+func (n *NanoServe) CONNECT(path string, h ...HandlerFunction) *NanoServe {
 	n.addRoute(http.MethodConnect, path, h...)
+	return n
 }
 
-func (n *NanoServe) TRACE(path string, h ...HandlerFunction) {
+func (n *NanoServe) TRACE(path string, h ...HandlerFunction) *NanoServe {
 	n.addRoute(http.MethodTrace, path, h...)
+	return n
 }
 
-func (n *NanoServe) Handle(method, path string, h ...HandlerFunction) {
+func (n *NanoServe) Handle(method, path string, h ...HandlerFunction) *NanoServe {
 	n.addRoute(method, path, h...)
+	return n
+}
+
+func (n *NanoServe) ALL(path string, h ...HandlerFunction) *NanoServe {
+	n.addRoute("ALL", path, h...)
+	return n
+}
+
+func (n *NanoServe) ANY(path string, h ...HandlerFunction) *NanoServe {
+	n.addRoute("ALL", path, h...)
+	return n
 }
 
 // for serving static files
@@ -106,18 +133,51 @@ func (n *NanoServe) Use(pathOrHandler any, handlers ...HandlerFunction) {
 	}
 }
 
+// sub method for sub routing
+func (n *NanoServe) Sub(prefix string, instance NanoServe) {
+	cleanPrefix := prefix
+	if strings.HasSuffix(prefix, "/*") {
+		cleanPrefix = prefix[:len(prefix)-2]
+	}
+
+	prefixLenght := len(cleanPrefix)
+	if cleanPrefix == "/" {
+		prefixLenght = 0
+	}
+
+	handler := func(ctx *Context) error {
+		path := "/"
+		if len(ctx.Request.URL.Path) >= prefixLenght {
+			path = ctx.Request.URL.Path[prefixLenght:]
+		}
+
+		match := instance.router.Search(ctx.Request.Method, path)
+		ctx.handlers = match.Handler
+		ctx.Request.URL.Path = path
+		ctx.params = match.Params
+		// call child router's execute handler
+		instance.executeHandlers(ctx)
+		return nil
+	}
+	n.ALL(prefix, handler)
+	n.ALL(cleanPrefix, handler)
+}
+
 // Our Main Handler which will handle the incoming request
 func (n *NanoServe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	match := n.router.Search(r.Method, r.URL.Path)
 
 	c := NewContext(w, r, match.Handler, match.Params)
 
+	n.executeHandlers(c)
+}
+
+func (n *NanoServe) executeHandlers(c *Context) {
 	if len(c.handlers) > 0 {
 		if err := c.handlers[0](c); err != nil {
 			n.ErrorHandler(c, err)
 		}
 		return
 	}
-
-	http.NotFound(w, r)
+	http.NotFound(c.Writer, c.Request)
 }

@@ -153,11 +153,20 @@ func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 			collected = append(collected, node.middlewares...)
 		}
 	}
-	if h := node.handlers[method]; h != nil {
+	
+	if handler := node.handlers[method]; handler != nil {
 		if !copied {
 			collected = append([]HandlerFunction{}, collected...)
 		}
-		collected = append(collected, h)
+		collected = append(collected, handler)
+		return &RouteMatch{Params: params, Handler: collected}
+	}
+
+	if handler := node.handlers["ALL"]; handler != nil {
+		if !copied {
+			collected = append([]HandlerFunction{}, collected...)
+		}
+		collected = append(collected, handler)
 		return &RouteMatch{Params: params, Handler: collected}
 	}
 
