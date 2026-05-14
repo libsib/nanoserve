@@ -88,8 +88,7 @@ func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction)
 	}
 
 	segments := strings.Split(path, "/")
-	routeParams := map[string] any{}
-	for i, element := range segments {
+	for _ , element := range segments {
 		if element == "" {
 			continue
 		}
@@ -107,7 +106,6 @@ func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction)
 
 		node = node.children[key]
 		if cleanParam != "" {
-			routeParams[cleanParam] = i
 			node.paramName = cleanParam
 		}
 	}
@@ -153,11 +151,20 @@ func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 			collected = append(collected, node.middlewares...)
 		}
 	}
-	if h := node.handlers[method]; h != nil {
+	
+	if handler := node.handlers[method]; handler != nil {
 		if !copied {
 			collected = append([]HandlerFunction{}, collected...)
 		}
-		collected = append(collected, h)
+		collected = append(collected, handler)
+		return &RouteMatch{Params: params, Handler: collected}
+	}
+
+	if handler := node.handlers["ALL"]; handler != nil {
+		if !copied {
+			collected = append([]HandlerFunction{}, collected...)
+		}
+		collected = append(collected, handler)
 		return &RouteMatch{Params: params, Handler: collected}
 	}
 
