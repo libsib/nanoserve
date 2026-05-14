@@ -134,21 +134,24 @@ func (n *NanoServe) Use(pathOrHandler any, handlers ...HandlerFunction) {
 }
 
 // sub method for sub routing
-func (n *NanoServe) Sub(prefix string, instance NanoServe) {
+func (n *NanoServe) Sub(prefix string, instance *NanoServe) {
 	cleanPrefix := prefix
 	if strings.HasSuffix(prefix, "/*") {
 		cleanPrefix = prefix[:len(prefix)-2]
 	}
 
-	prefixLenght := len(cleanPrefix)
+	prefixLength := len(cleanPrefix)
 	if cleanPrefix == "/" {
-		prefixLenght = 0
+		prefixLength = 0
 	}
 
 	handler := func(ctx *Context) error {
 		path := "/"
-		if len(ctx.Request.URL.Path) >= prefixLenght {
-			path = ctx.Request.URL.Path[prefixLenght:]
+		if len(ctx.Request.URL.Path) >= prefixLength {
+			path = ctx.Request.URL.Path[prefixLength:]
+			if path == "" {
+				path = "/"
+			}
 		}
 
 		match := instance.router.Search(ctx.Request.Method, path)
@@ -156,7 +159,7 @@ func (n *NanoServe) Sub(prefix string, instance NanoServe) {
 		ctx.Request.URL.Path = path
 		ctx.params = match.Params
 		// call child router's execute handler
-		instance.executeHandlers(ctx)
+		executeHandlers(ctx, instance.ErrorHandler)
 		return nil
 	}
 	n.ALL(prefix, handler)
@@ -169,13 +172,13 @@ func (n *NanoServe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	c := NewContext(w, r, match.Handler, match.Params)
 
-	n.executeHandlers(c)
+	executeHandlers(c, n.ErrorHandler)
 }
 
-func (n *NanoServe) executeHandlers(c *Context) {
+func executeHandlers(c *Context, errHandler ErrorHandlerFunc) {
 	if len(c.handlers) > 0 {
 		if err := c.handlers[0](c); err != nil {
-			n.ErrorHandler(c, err)
+			errHandler(c, err)
 		}
 		return
 	}

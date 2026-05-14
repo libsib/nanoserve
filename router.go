@@ -88,8 +88,7 @@ func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction)
 	}
 
 	segments := strings.Split(path, "/")
-	routeParams := map[string] any{}
-	for i, element := range segments {
+	for _ , element := range segments {
 		if element == "" {
 			continue
 		}
@@ -107,7 +106,6 @@ func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction)
 
 		node = node.children[key]
 		if cleanParam != "" {
-			routeParams[cleanParam] = i
 			node.paramName = cleanParam
 		}
 	}
