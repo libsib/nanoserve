@@ -60,7 +60,8 @@ func (c *Context) Abort() {
 // AbortWithStatus stops the middleware chain and writes the given status code.
 func (c *Context) AbortWithStatus(code int) {
 	c.abort = true
-	c.Writer.WriteHeader(code)
+	c.Status(code)
+	c.writeStatus()
 }
 
 // Status sets the HTTP response status code. Returns the context for chaining.
@@ -89,7 +90,7 @@ func (c *Context) Get(key string) any {
 }
 
 // Url returns the request URL.
-func (c *Context) Url() *url.URL {
+func (c *Context) URL() *url.URL {
 	return c.Request.URL
 }
 
@@ -136,7 +137,7 @@ func (c *Context) String(s string) error {
 }
 
 // Json writes a JSON response.
-func (c *Context) Json(data any) error {
+func (c *Context) JSON(data any) error {
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.writeStatus()
 	return json.NewEncoder(c.Writer).Encode(data)
@@ -191,7 +192,8 @@ func (c *Context) BodyBytes() ([]byte, error) {
 	return c.readBody()
 }
 
-// Bind decodes the JSON request body into v. v must be a pointer.
+// Bind decodes a JSON request body. Expects Content-Type: application/json.
+// v must be a pointer.
 // Safe to call alongside BodyBytes — both share the same cached read.
 func (c *Context) Bind(v any) error {
 	b, err := c.readBody()

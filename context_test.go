@@ -82,7 +82,7 @@ func TestStringIsAliasForText(t *testing.T) {
 
 func TestJsonResponse(t *testing.T) {
 	c, w := newTestContext("GET", "/", "")
-	_ = c.Json(map[string]string{"key": "value"})
+	_ = c.JSON(map[string]string{"key": "value"})
 	if !strings.Contains(w.Body.String(), `"key"`) {
 		t.Fatalf("unexpected body: %q", w.Body.String())
 	}
