@@ -21,11 +21,11 @@ type Context struct {
 
 func NewContext(w http.ResponseWriter, r *http.Request, handlers []HandlerFunction, params map[string]string) *Context {
 	return &Context{
-		Writer:      w,
-		Request:     r,
-		handlers:    handlers,
-		params:      params,
-		index:       0,
+		Writer:   w,
+		Request:  r,
+		handlers: handlers,
+		params:   params,
+		index:    0,
 	}
 }
 
@@ -59,20 +59,6 @@ func (c *Context) Get(key string) any {
 	return c.contextData[key]
 }
 
-func (c *Context) Text(text string) error {
-	c.Writer.Header().Set("Content-Type", "text/plain")
-	c.writeStatus()
-	_, err := c.Writer.Write([]byte(text))
-	return err
-}
-
-func (c *Context) String(s string) error {
-	c.Writer.Header().Set("Content-Type", "text/plain")
-	c.writeStatus()
-	_, err := c.Writer.Write([]byte(s))
-	return err
-}
-
 func (c *Context) Url() *url.URL {
 	return c.Request.URL
 }
@@ -89,8 +75,47 @@ func (c *Context) Param(key string) string {
 	return ""
 }
 
+func (c *Context) SetHeader(key string, val string) {
+	c.Writer.Header().Set(key, val)
+}
+
+func (c *Context) GetHeader(key string) string {
+	return c.Request.Header.Get(key)
+}
+
+func (c *Context) Text(text string) error {
+	c.Writer.Header().Set("Content-Type", "text/plain")
+	c.writeStatus()
+	_, err := c.Writer.Write([]byte(text))
+	return err
+}
+
+// same as Text, shouldn't exist but still i have kept this, dunno whyyy
+func (c *Context) String(s string) error {
+	return c.Text(s)
+}
+
 func (c *Context) Json(data any) error {
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.writeStatus()
 	return json.NewEncoder(c.Writer).Encode(data)
+}
+
+func (c *Context) HTML(s string) error {
+	c.SetHeader("Content-Type", "text/html; charset=utf-8")
+	c.writeStatus()
+	_, err := c.Writer.Write([]byte(s))
+	return err
+}
+
+func (c *Context) GetCookie(cookieName string) (*http.Cookie, error) {
+	return c.Request.Cookie(cookieName)
+}
+
+func (c *Context) SetCookie(cookie http.Cookie) {
+	http.SetCookie(c.Writer, &cookie)
+}
+
+func (c *Context) Redirect(url string, code int) {
+	http.Redirect(c.Writer, c.Request, url, code)
 }
