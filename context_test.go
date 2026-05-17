@@ -251,7 +251,7 @@ func TestSetAndGetCookie(t *testing.T) {
 
 func TestParam(t *testing.T) {
 	req := httptest.NewRequest("GET", "/user/42", nil)
-	c := NewContext(httptest.NewRecorder(), req, nil, map[string]string{"id": "42"})
+	c := NewContext(httptest.NewRecorder(), req, nil, Params{{Key: "id", Value: "42"}})
 	if c.Param("id") != "42" {
 		t.Fatalf("expected 42, got %q", c.Param("id"))
 	}
