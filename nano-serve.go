@@ -168,7 +168,7 @@ func (n *NanoServe) Sub(prefix string, instance *NanoServe) {
 
 // Our Main Handler which will handle the incoming request
 func (n *NanoServe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	match := n.router.Search(r.Method, r.URL.Path)
+	match := n.router.Find(r.Method, r.URL.Path)
 
 	c := NewContext(w, r, match.Handler, match.Params)
 

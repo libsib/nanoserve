@@ -15,7 +15,7 @@ type Context struct {
 	Writer  http.ResponseWriter
 	Request *http.Request
 
-	params map[string]string
+	params Params
 
 	handlers []HandlerFunction
 	index    int
@@ -28,7 +28,7 @@ type Context struct {
 	bodyCached bool
 }
 
-func NewContext(w http.ResponseWriter, r *http.Request, handlers []HandlerFunction, params map[string]string) *Context {
+func NewContext(w http.ResponseWriter, r *http.Request, handlers []HandlerFunction, params Params) *Context {
 	return &Context{
 		Writer:   w,
 		Request:  r,
@@ -105,7 +105,7 @@ func (c *Context) Query(key string) string {
 //
 //	c.Param("id") // route "/user/:id", request "/user/42" → "42"
 func (c *Context) Param(key string) string {
-	return c.params[key]
+	return c.params.Get(key)
 }
 
 // Method returns the HTTP method of the request (GET, POST, etc.).

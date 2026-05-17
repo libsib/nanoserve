@@ -4,15 +4,32 @@ import (
 	"strings"
 )
 
+type Param struct {
+	Key   string
+	Value string
+}
+
+type Params []Param
+
+func (p Params) Get(key string) string {
+	for _, param := range p {
+		if param.Key == key {
+			return param.Value
+		}
+	}
+	return ""
+}
+
 type Router interface {
 	Insert(method, path string, handler HandlerFunction)
 	Search(method, path string) *RouteMatch
+	Find(method, path string) *RouteMatch
 	AddMiddleware(path string, handlers ...HandlerFunction)
 }
 
 type RouteMatch struct {
 	Handler []HandlerFunction
-	Params  map[string]string
+	Params  Params
 }
 
 type Node struct {
@@ -88,7 +105,7 @@ func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction)
 	}
 
 	segments := strings.Split(path, "/")
-	for _ , element := range segments {
+	for _, element := range segments {
 		if element == "" {
 			continue
 		}
@@ -120,25 +137,22 @@ func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 	collected = r.globalMiddlewares
 	copied := false
 
-	var params map[string]string
+	var params Params
 
 	for _, element := range segments {
 		if element == "" {
 			continue
 		}
 
-		if node.children[element] != nil {
-			node = node.children[element]
-		} else if node.children[":"] != nil {
-			node = node.children[":"]
+		if child := node.children[element]; child != nil {
+			node = child
+		} else if child := node.children[":"]; child != nil {
+			node = child
 			if node.paramName != "" {
-				if params == nil {
-					params = map[string]string{}
-				}
-				params[node.paramName] = element
+				params = append(params, Param{Key: node.paramName, Value: element})
 			}
-		} else if node.children["*"] != nil {
-			node = node.children["*"]
+		} else if child := node.children["*"]; child != nil {
+			node = child
 			break
 		} else {
 			return &RouteMatch{Params: params, Handler: collected}
@@ -151,7 +165,7 @@ func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 			collected = append(collected, node.middlewares...)
 		}
 	}
-	
+	// first check for given method
 	if handler := node.handlers[method]; handler != nil {
 		if !copied {
 			collected = append([]HandlerFunction{}, collected...)
@@ -159,7 +173,77 @@ func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 		collected = append(collected, handler)
 		return &RouteMatch{Params: params, Handler: collected}
 	}
+	// if not then "ALL"
+	if handler := node.handlers["ALL"]; handler != nil {
+		if !copied {
+			collected = append([]HandlerFunction{}, collected...)
+		}
+		collected = append(collected, handler)
+		return &RouteMatch{Params: params, Handler: collected}
+	}
 
+	return &RouteMatch{Params: params, Handler: collected}
+}
+
+func (r *TrieRouter) Find(method string, path string) *RouteMatch {
+	// Path - /user/me
+	node := r.root
+
+	var collected []HandlerFunction
+	collected = r.globalMiddlewares
+	copied := false
+
+	var params Params
+
+	start := 0
+	for i := 0; i <= len(path); i++ {
+		// range of /user/me
+		if i == len(path) || path[i] == '/' {
+			//
+			if start == i {
+				start = i + 1
+				continue
+			}
+
+			// strip the seg
+			// like "/user/me" , start=0, and when path[i]== / second time at /me
+			// so we do path[0:5] which will return user, thats what we need.
+			segment := path[start:i]
+
+			if child := node.children[segment]; child != nil {
+				node = child
+			} else if child := node.children[":"]; child != nil {
+				node = child
+				if node.paramName != "" {
+					params = append(params, Param{Key: node.paramName, Value: segment})
+				}
+			} else if child := node.children["*"]; child != nil {
+				node = child
+				break
+			} else {
+				return &RouteMatch{Params: params, Handler: collected}
+			}
+
+			if len(node.middlewares) > 0 {
+				if !copied {
+					collected = append([]HandlerFunction{}, collected...)
+					copied = true
+				}
+				collected = append(collected, node.middlewares...)
+			}
+
+			start = i + 1
+		}
+	}
+
+	if handler := node.handlers[method]; handler != nil {
+		if !copied {
+			collected = append([]HandlerFunction{}, collected...)
+		}
+		collected = append(collected, handler)
+		return &RouteMatch{Params: params, Handler: collected}
+	}
+	// if not then "ALL"
 	if handler := node.handlers["ALL"]; handler != nil {
 		if !copied {
 			collected = append([]HandlerFunction{}, collected...)
