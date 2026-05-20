@@ -70,7 +70,7 @@ func testMiddlewares(t *testing.T, newLookup func(*TrieRouter) lookupFn) {
 	t.Run("path-scoped middleware only appears for matching prefix", func(t *testing.T) {
 		r := NewTrieRouter()
 		lookup := newLookup(r)
-		r.AddMiddleware("/api", func(ctx *Context) error { return ctx.Next() })
+		r.AddMiddleware("/api/*", func(ctx *Context) error { return ctx.Next() })
 		r.Insert("GET", "/api/users", func(ctx *Context) error { return nil })
 		r.Insert("GET", "/other", func(ctx *Context) error { return nil })
 
@@ -107,6 +107,20 @@ func testMiddlewares(t *testing.T, newLookup func(*TrieRouter) lookupFn) {
 		match.Handler[1](nil)
 		if order[0] != "middleware" || order[1] != "handler" {
 			t.Fatalf("wrong execution order: %v", order)
+		}
+	})
+
+	t.Run("it shouldnt include /user midl", func(t *testing.T) {
+		r := NewTrieRouter()
+		lookup := newLookup(r)
+
+		r.AddMiddleware("/user", func(ctx *Context) error {return nil})
+		r.Insert("GET","/user/me",func(ctx *Context) error {return nil})
+
+		match := lookup("GET", "/user/me")
+
+		if len(match.Handler) != 1 {
+			t.Fatalf("expected 1, got %d",len(match.Handler))
 		}
 	})
 }

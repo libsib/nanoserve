@@ -82,8 +82,6 @@ func (r *TrieRouter) AddMiddleware(path string, handlers ...HandlerFunction) {
 		key := element
 		if strings.HasPrefix(element, ":") {
 			key = ":"
-		} else if strings.HasPrefix(element, "*") {
-			node.middlewares = append(node.middlewares, handlers...)
 		}
 
 		if node.children[key] == nil {
@@ -144,12 +142,27 @@ func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 			continue
 		}
 
+		wildCardMatch := node.children["*"]
 		if child := node.children[element]; child != nil {
+			if wildCardMatch != nil && len(wildCardMatch.middlewares) > 0 {
+				if !copied {
+					collected = append([]HandlerFunction{}, collected...)
+					copied = true
+				}
+				collected = append(collected, wildCardMatch.middlewares...)
+			}
 			node = child
 		} else if child := node.children[":"]; child != nil {
 			node = child
 			if node.paramName != "" {
 				params = append(params, Param{Key: node.paramName, Value: element})
+			}
+			if wildCardMatch != nil && len(wildCardMatch.middlewares) > 0 {
+				if !copied {
+					collected = append([]HandlerFunction{}, collected...)
+					copied = true
+				}
+				collected = append(collected, wildCardMatch.middlewares...)
 			}
 		} else if child := node.children["*"]; child != nil {
 			node = child
@@ -157,13 +170,13 @@ func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 		} else {
 			return &RouteMatch{Params: params, Handler: collected}
 		}
-		if len(node.middlewares) > 0 {
-			if !copied {
-				collected = append([]HandlerFunction{}, collected...)
-				copied = true
-			}
-			collected = append(collected, node.middlewares...)
+	}
+	if len(node.middlewares) > 0 {
+		if !copied {
+			collected = append([]HandlerFunction{}, collected...)
+			copied = true
 		}
+		collected = append(collected, node.middlewares...)
 	}
 	// first check for given method
 	if handler := node.handlers[method]; handler != nil {
@@ -209,13 +222,28 @@ func (r *TrieRouter) Find(method string, path string) *RouteMatch {
 			// like "/user/me" , start=0, and when path[i]== / second time at /me
 			// so we do path[0:5] which will return user, thats what we need.
 			segment := path[start:i]
+			wildCardMatch := node.children["*"]
 
 			if child := node.children[segment]; child != nil {
 				node = child
+				if wildCardMatch != nil && len(wildCardMatch.middlewares) > 0 {
+					if !copied {
+						collected = append([]HandlerFunction{}, collected...)
+						copied = true
+					}
+					collected = append(collected, wildCardMatch.middlewares...)
+				}
 			} else if child := node.children[":"]; child != nil {
 				node = child
 				if node.paramName != "" {
 					params = append(params, Param{Key: node.paramName, Value: segment})
+				}
+				if wildCardMatch != nil && len(wildCardMatch.middlewares) > 0 {
+					if !copied {
+						collected = append([]HandlerFunction{}, collected...)
+						copied = true
+					}
+					collected = append(collected, wildCardMatch.middlewares...)
 				}
 			} else if child := node.children["*"]; child != nil {
 				node = child
@@ -224,16 +252,16 @@ func (r *TrieRouter) Find(method string, path string) *RouteMatch {
 				return &RouteMatch{Params: params, Handler: collected}
 			}
 
-			if len(node.middlewares) > 0 {
-				if !copied {
-					collected = append([]HandlerFunction{}, collected...)
-					copied = true
-				}
-				collected = append(collected, node.middlewares...)
-			}
-
 			start = i + 1
 		}
+	}
+
+	if len(node.middlewares) > 0 {
+		if !copied {
+			collected = append([]HandlerFunction{}, collected...)
+			copied = true
+		}
+		collected = append(collected, node.middlewares...)
 	}
 
 	if handler := node.handlers[method]; handler != nil {
