@@ -151,6 +151,18 @@ func (c *Context) HTML(s string) error {
 	return err
 }
 
+// NoContent writes a response with the given status code and no body.
+func (c *Context) NoContent(code int) error {
+	c.statusCode = code
+	c.Writer.WriteHeader(code)
+	return nil
+}
+
+// Send204 sends a 204 No Content response.
+func (c *Context) Send204() error {
+	return c.NoContent(http.StatusNoContent)
+}
+
 // GetCookie returns the named cookie from the request.
 func (c *Context) GetCookie(cookieName string) (*http.Cookie, error) {
 	return c.Request.Cookie(cookieName)
@@ -172,7 +184,7 @@ func (c *Context) Redirect(url string, code int) {
 
 // readBody reads the request body once and caches it so that BodyBytes and
 // Bind can both be called without consuming the stream twice.
-func (c *Context) readBody() ([]byte, error) {
+func readBody(c *Context) ([]byte, error) {
 	if c.bodyCached {
 		return c.bodyCache, nil
 	}
@@ -189,14 +201,14 @@ func (c *Context) readBody() ([]byte, error) {
 // BodyBytes reads and returns the raw request body.
 // Safe to call alongside Bind — both share the same cached read.
 func (c *Context) BodyBytes() ([]byte, error) {
-	return c.readBody()
+	return readBody(c)
 }
 
 // Bind decodes a JSON request body. Expects Content-Type: application/json.
 // v must be a pointer.
 // Safe to call alongside BodyBytes — both share the same cached read.
 func (c *Context) Bind(v any) error {
-	b, err := c.readBody()
+	b, err := readBody(c)
 	if err != nil {
 		return err
 	}

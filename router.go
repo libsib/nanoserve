@@ -128,6 +128,8 @@ func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction)
 	node.handlers[method] = handler
 }
 
+// deprecated. 
+// use find method for performance.
 func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 	node := r.root
 	segments := strings.Split(path, "/")
