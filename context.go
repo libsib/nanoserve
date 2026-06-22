@@ -28,12 +28,12 @@ type Context struct {
 	bodyCached bool
 }
 
-func NewContext(w http.ResponseWriter, r *http.Request, handlers []HandlerFunction, params Params) *Context {
+func NewContext(w http.ResponseWriter, r *http.Request, matchedResult *RouteMatch) *Context {
 	return &Context{
 		Writer:   w,
 		Request:  r,
-		handlers: handlers,
-		params:   params,
+		handlers: matchedResult.Handler,
+		params:   matchedResult.Params,
 		index:    0,
 	}
 }

@@ -20,7 +20,7 @@ func newTestContext(method, target string, body string, handlers ...HandlerFunct
 	if len(handlers) == 0 {
 		handlers = []HandlerFunction{func(c *Context) error { return nil }}
 	}
-	c := NewContext(w, req, handlers, nil)
+	c := NewContext(w, req, &RouteMatch{Handler: handlers})
 	return c, w
 }
 
@@ -135,7 +135,7 @@ func TestBodyBytesAndBindShareCache(t *testing.T) {
 	payload := `{"name":"test"}`
 	req := httptest.NewRequest("POST", "/", bytes.NewBufferString(payload))
 	w := httptest.NewRecorder()
-	c := NewContext(w, req, nil, nil)
+	c := NewContext(w, req, &RouteMatch{})
 
 	raw, err := c.BodyBytes()
 	if err != nil {
@@ -158,7 +158,7 @@ func TestBindThenBodyBytes(t *testing.T) {
 	payload := `{"x":1}`
 	req := httptest.NewRequest("POST", "/", bytes.NewBufferString(payload))
 	w := httptest.NewRecorder()
-	c := NewContext(w, req, nil, nil)
+	c := NewContext(w, req, &RouteMatch{})
 
 	var data map[string]any
 	if err := c.Bind(&data); err != nil {
@@ -237,7 +237,7 @@ func TestSetAndGetCookie(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.AddCookie(&http.Cookie{Name: "token", Value: "abc123"})
-	c2 := NewContext(httptest.NewRecorder(), req, nil, nil)
+	c2 := NewContext(httptest.NewRecorder(), req, &RouteMatch{})
 	cookie, err := c2.GetCookie("token")
 	if err != nil {
 		t.Fatal(err)
@@ -251,7 +251,7 @@ func TestSetAndGetCookie(t *testing.T) {
 
 func TestParam(t *testing.T) {
 	req := httptest.NewRequest("GET", "/user/42", nil)
-	c := NewContext(httptest.NewRecorder(), req, nil, Params{{Key: "id", Value: "42"}})
+	c := NewContext(httptest.NewRecorder(), req, &RouteMatch{Params: Params{{Key: "id", Value: "42"}}})
 	if c.Param("id") != "42" {
 		t.Fatalf("expected 42, got %q", c.Param("id"))
 	}
@@ -275,7 +275,7 @@ func TestSetAndGetHeader(t *testing.T) {
 func TestGetHeader(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("Authorization", "Bearer token")
-	c := NewContext(httptest.NewRecorder(), req, nil, nil)
+	c := NewContext(httptest.NewRecorder(), req, &RouteMatch{})
 	if c.GetHeader("Authorization") != "Bearer token" {
 		t.Fatalf("unexpected header value: %q", c.GetHeader("Authorization"))
 	}

@@ -170,7 +170,7 @@ func (n *NanoServe) Sub(prefix string, instance *NanoServe) {
 func (n *NanoServe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	match := n.router.Find(r.Method, r.URL.Path)
 
-	c := NewContext(w, r, match.Handler, match.Params)
+	c := NewContext(w, r, match)
 
 	executeHandlers(c, n.ErrorHandler)
 }
