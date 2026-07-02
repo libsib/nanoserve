@@ -3,6 +3,7 @@ package nanoserve
 import (
 	"net/http"
 	"strings"
+	"sync"
 )
 
 type HandlerFunction func(*Context) error
@@ -166,13 +167,23 @@ func (n *NanoServe) Sub(prefix string, instance *NanoServe) {
 	n.ALL(cleanPrefix, handler)
 }
 
+// contextPool recycles Contexts across requests to avoid a heap allocation on every request
+// if a handler spawns a goroutine that uses the request data, it must copy...
+// the values it needs instead of using the *Context in goroutine.
+var contextPool = sync.Pool{
+	New: func() any { return new(Context) },
+}
+
 // Our Main Handler which will handle the incoming request
 func (n *NanoServe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	match := n.router.Find(r.Method, r.URL.Path)
 
-	c := NewContext(w, r, match)
+	c := contextPool.Get().(*Context)
+	c.reset(w, r, match)
 
 	executeHandlers(c, n.ErrorHandler)
+
+	contextPool.Put(c)
 }
 
 func executeHandlers(c *Context, errHandler ErrorHandlerFunc) {

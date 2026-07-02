@@ -38,6 +38,20 @@ func NewContext(w http.ResponseWriter, r *http.Request, matchedResult *RouteMatc
 	}
 }
 
+// reset clearing all the state , left over from the previous one.
+func (c *Context) reset(w http.ResponseWriter, r *http.Request, matchedResult *RouteMatch) {
+	c.Writer = w
+	c.Request = r
+	c.handlers = matchedResult.Handler
+	c.params = matchedResult.Params
+	c.index = 0
+	c.contextData = nil
+	c.statusCode = 0
+	c.abort = false
+	c.bodyCache = nil
+	c.bodyCached = false
+}
+
 // Next calls the next handler in the middleware chain.
 // If Abort was called, it stops execution immediately.
 func (c *Context) Next() error {
