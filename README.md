@@ -21,7 +21,7 @@ The goal of nanoServe is to remain simple, fast, and easy to extend while mainta
 ## Installation
 
 ```bash
-go get github.com/exvillager/nanoserve
+go get github.com/libsib/nanoserve
 ```
 
 ---
@@ -33,7 +33,7 @@ package main
 
 import (
 	"net/http"
-	"github.com/exvillager/nanoserve"
+	"github.com/libsib/nanoserve"
 )
 
 func main() {

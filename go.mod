@@ -1,3 +1,3 @@
-module github.com/exvillager/nanoserve
+module github.com/libsib/nanoserve
 
 go 1.25.5
