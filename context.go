@@ -151,6 +151,32 @@ func (c *Context) HTML(s string) error {
 	return err
 }
 
+// Send writes data to the response with the given Content-Type.
+// data may be a string, []byte, or io.Reader; any other type is JSON-encoded.
+// If contentType is empty, it defaults to application/octet-stream.
+func (c *Context) Send(data any, contentType string) error {
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	c.Writer.Header().Set("Content-Type", contentType)
+	c.writeStatus()
+	switch d := data.(type) {
+	case nil:
+		return nil
+	case []byte:
+		_, err := c.Writer.Write(d)
+		return err
+	case string:
+		_, err := c.Writer.Write([]byte(d))
+		return err
+	case io.Reader:
+		_, err := io.Copy(c.Writer, d)
+		return err
+	default:
+		return json.NewEncoder(c.Writer).Encode(data)
+	}
+}
+
 // NoContent writes a response with the given status code and no body.
 func (c *Context) NoContent(code int) error {
 	c.statusCode = code

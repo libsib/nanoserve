@@ -103,6 +103,44 @@ func TestHTMLResponse(t *testing.T) {
 	}
 }
 
+func TestSendString(t *testing.T) {
+	c, w := newTestContext("GET", "/", "")
+	_ = c.Send("hello", "text/plain")
+	if w.Body.String() != "hello" {
+		t.Fatalf("unexpected body: %q", w.Body.String())
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "text/plain" {
+		t.Fatalf("expected text/plain, got %q", ct)
+	}
+}
+
+func TestSendBytes(t *testing.T) {
+	c, w := newTestContext("GET", "/", "")
+	_ = c.Send([]byte{0x01, 0x02}, "")
+	if !bytes.Equal(w.Body.Bytes(), []byte{0x01, 0x02}) {
+		t.Fatalf("unexpected body: %v", w.Body.Bytes())
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "application/octet-stream" {
+		t.Fatalf("expected application/octet-stream default, got %q", ct)
+	}
+}
+
+func TestSendReader(t *testing.T) {
+	c, w := newTestContext("GET", "/", "")
+	_ = c.Send(strings.NewReader("streamed"), "text/plain")
+	if w.Body.String() != "streamed" {
+		t.Fatalf("unexpected body: %q", w.Body.String())
+	}
+}
+
+func TestSendStructAsJSON(t *testing.T) {
+	c, w := newTestContext("GET", "/", "")
+	_ = c.Send(map[string]string{"ok": "yes"}, "application/json")
+	if strings.TrimSpace(w.Body.String()) != `{"ok":"yes"}` {
+		t.Fatalf("unexpected body: %q", w.Body.String())
+	}
+}
+
 func TestStatusChaining(t *testing.T) {
 	c, w := newTestContext("GET", "/", "")
 	c.Status(http.StatusCreated).Text("created")
