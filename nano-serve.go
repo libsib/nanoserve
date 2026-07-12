@@ -92,7 +92,7 @@ func (n *NanoServe) ANY(path string, h ...HandlerFunction) *NanoServe {
 
 // for serving static files
 
-func (n *NanoServe) Static(urlPrefix string, rootDir string) {
+func (n *NanoServe) Static(urlPrefix string, rootDir string) *NanoServe {
 	fs := http.FileServer(http.Dir(rootDir))
 
 	handler := func(ctx *Context) error {
@@ -101,6 +101,7 @@ func (n *NanoServe) Static(urlPrefix string, rootDir string) {
 	}
 
 	n.GET(urlPrefix+"/*", handler)
+	return n
 }
 
 func (n *NanoServe) addRoute(method string, path string, handlers ...HandlerFunction) {
@@ -121,7 +122,7 @@ func (n *NanoServe) Run(addr string) error {
 	return http.ListenAndServe(addr, n)
 }
 
-func (n *NanoServe) Use(pathOrHandler any, handlers ...HandlerFunction) {
+func (n *NanoServe) Use(pathOrHandler any, handlers ...HandlerFunction) *NanoServe {
 	switch v := pathOrHandler.(type) {
 	case string:
 		n.router.AddMiddleware(v, handlers...)
@@ -132,10 +133,12 @@ func (n *NanoServe) Use(pathOrHandler any, handlers ...HandlerFunction) {
 		all := append([]HandlerFunction{v}, handlers...)
 		n.router.AddMiddleware("/", all...)
 	}
+
+	return n
 }
 
 // sub method for sub routing
-func (n *NanoServe) Sub(prefix string, instance *NanoServe) {
+func (n *NanoServe) Sub(prefix string, instance *NanoServe) *NanoServe {
 	cleanPrefix := prefix
 	if strings.HasSuffix(prefix, "/*") {
 		cleanPrefix = prefix[:len(prefix)-2]
@@ -155,7 +158,7 @@ func (n *NanoServe) Sub(prefix string, instance *NanoServe) {
 			}
 		}
 
-		match := instance.router.Search(ctx.Request.Method, path)
+		match := instance.router.Find(ctx.Request.Method, path)
 		ctx.handlers = match.Handler
 		ctx.Request.URL.Path = path
 		ctx.params = match.Params
@@ -165,6 +168,8 @@ func (n *NanoServe) Sub(prefix string, instance *NanoServe) {
 	}
 	n.ALL(prefix, handler)
 	n.ALL(cleanPrefix, handler)
+
+	return n
 }
 
 // contextPool recycles Contexts across requests to avoid a heap allocation on every request
@@ -179,7 +184,7 @@ func (n *NanoServe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	match := n.router.Find(r.Method, r.URL.Path)
 
 	c := contextPool.Get().(*Context)
-	c.reset(w, r, match)
+	c.resetWith(w, r, match)
 
 	executeHandlers(c, n.ErrorHandler)
 

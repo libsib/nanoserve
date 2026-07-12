@@ -38,8 +38,8 @@ func NewContext(w http.ResponseWriter, r *http.Request, matchedResult *RouteMatc
 	}
 }
 
-// reset clearing all the state , left over from the previous one.
-func (c *Context) reset(w http.ResponseWriter, r *http.Request, matchedResult *RouteMatch) {
+// resetWith clears all the state and applies new values for the next request.
+func (c *Context) resetWith(w http.ResponseWriter, r *http.Request, matchedResult *RouteMatch) {
 	c.Writer = w
 	c.Request = r
 	c.handlers = matchedResult.Handler
@@ -103,7 +103,7 @@ func (c *Context) Get(key string) any {
 	return c.contextData[key]
 }
 
-// Url returns the request URL.
+// URL returns the request URL.
 func (c *Context) URL() *url.URL {
 	return c.Request.URL
 }
@@ -150,7 +150,7 @@ func (c *Context) String(s string) error {
 	return c.Text(s)
 }
 
-// Json writes a JSON response.
+// JSON writes a JSON response.
 func (c *Context) JSON(data any) error {
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.writeStatus()
