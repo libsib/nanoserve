@@ -129,7 +129,7 @@ func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction)
 }
 
 // deprecated. 
-// use find method for performance.
+// use find method for better performance.
 func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 	node := r.root
 	segments := strings.Split(path, "/")
@@ -219,7 +219,6 @@ func (r *TrieRouter) Find(method string, path string) *RouteMatch {
 				start = i + 1
 				continue
 			}
-
 			// strip the seg
 			// like "/user/me" , start=0, and when path[i]== / second time at /me
 			// so we do path[0:5] which will return user, thats what we need.
@@ -265,7 +264,7 @@ func (r *TrieRouter) Find(method string, path string) *RouteMatch {
 		}
 		collected = append(collected, node.middlewares...)
 	}
-
+	// first check for given method
 	if handler := node.handlers[method]; handler != nil {
 		if !copied {
 			collected = append([]HandlerFunction{}, collected...)
