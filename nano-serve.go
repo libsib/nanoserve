@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-const Version = "v0.2.13"
+const Version = "v0.2.14"
 
 type HandlerFunction func(*Context) error
 
@@ -110,14 +110,7 @@ func (n *NanoServe) addRoute(method string, path string, handlers ...HandlerFunc
 	if len(handlers) == 0 {
 		panic("route must have at least one handler")
 	}
-
-	middlewareFunctions := handlers[:len(handlers)-1]
-	if len(middlewareFunctions) > 0 {
-		n.router.AddMiddleware(path, middlewareFunctions...)
-	}
-
-	handler := handlers[len(handlers)-1]
-	n.router.Insert(method, path, handler)
+	n.router.Insert(method, path, handlers...)
 }
 
 func (n *NanoServe) Run(addr string) error {

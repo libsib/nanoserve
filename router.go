@@ -22,7 +22,7 @@ func (p Params) Get(key string) string {
 }
 
 type Router interface {
-	Insert(method, path string, handler HandlerFunction)
+	Insert(method, path string, handlers ...HandlerFunction)
 	Search(method, path string) *RouteMatch
 	Find(method, path string) *RouteMatch
 	AddMiddleware(path string, handlers ...HandlerFunction)
@@ -40,7 +40,7 @@ type RouteMatch struct {
 type Node struct {
 	children      map[string]*Node
 	isEndOfWord   bool
-	handlers      map[string]HandlerFunction
+	handlers      map[string][]HandlerFunction
 	middlewares   []HandlerFunction
 	params        map[string]string
 	paramChild    *Node
@@ -50,7 +50,7 @@ type Node struct {
 func newNode() *Node {
 	return &Node{
 		children:    make(map[string]*Node),
-		handlers:    make(map[string]HandlerFunction),
+		handlers:    make(map[string][]HandlerFunction),
 		middlewares: []HandlerFunction{},
 		params:      make(map[string]string),
 	}
@@ -135,7 +135,7 @@ func NewTrieRouter() *TrieRouter {
 	return &TrieRouter{
 		root: &Node{
 			children:    make(map[string]*Node),
-			handlers:    make(map[string]HandlerFunction),
+			handlers:    make(map[string][]HandlerFunction),
 			middlewares: []HandlerFunction{},
 		},
 		getStatic:    make(map[string]*RouteMatch),
@@ -178,7 +178,10 @@ func (r *TrieRouter) AddMiddleware(path string, handlers ...HandlerFunction) {
 	r.rebuildStatic()
 }
 
-func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction) {
+// Insert registers the whole handler chain (route middleware first, final handler last)
+// for the method, so middleware belongs to this route and not to the path.
+func (r *TrieRouter) Insert(method string, path string, handlers ...HandlerFunction) {
+	routeHandlers := slices.Clone(handlers)
 	isStatic := !strings.Contains(path, ":") && !strings.Contains(path, "*")
 	if isStatic {
 		if !slices.Contains(r.staticPaths, path) {
@@ -192,7 +195,7 @@ func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction)
 
 	if path == "/" {
 		node.isEndOfWord = true
-		node.handlers[method] = handler
+		node.handlers[method] = routeHandlers
 		if newMethod {
 			// rebuild static cache
 			r.rebuildStatic()
@@ -222,7 +225,7 @@ func (r *TrieRouter) Insert(method string, path string, handler HandlerFunction)
 		}
 	}
 	node.isEndOfWord = true
-	node.handlers[method] = handler
+	node.handlers[method] = routeHandlers
 
 	if newMethod {
 		// rebuild static
@@ -310,19 +313,19 @@ func (r *TrieRouter) Find(method string, path string) *RouteMatch {
 		collected = append(collected, node.middlewares...)
 	}
 	// first check for given method
-	if handler := node.handlers[method]; handler != nil {
+	if routeHandlers := node.handlers[method]; routeHandlers != nil {
 		if !copied {
 			collected = append([]HandlerFunction{}, collected...)
 		}
-		collected = append(collected, handler)
+		collected = append(collected, routeHandlers...)
 		return &RouteMatch{Params: params, Handler: collected, HandlerFound: true}
 	}
 	// if not then "ALL"
-	if handler := node.handlers["ALL"]; handler != nil {
+	if routeHandlers := node.handlers["ALL"]; routeHandlers != nil {
 		if !copied {
 			collected = append([]HandlerFunction{}, collected...)
 		}
-		collected = append(collected, handler)
+		collected = append(collected, routeHandlers...)
 		return &RouteMatch{Params: params, Handler: collected, HandlerFound: true}
 	}
 
@@ -386,19 +389,19 @@ func (r *TrieRouter) Search(method string, path string) *RouteMatch {
 		collected = append(collected, node.middlewares...)
 	}
 	// first check for given method
-	if handler := node.handlers[method]; handler != nil {
+	if routeHandlers := node.handlers[method]; routeHandlers != nil {
 		if !copied {
 			collected = append([]HandlerFunction{}, collected...)
 		}
-		collected = append(collected, handler)
+		collected = append(collected, routeHandlers...)
 		return &RouteMatch{Params: params, Handler: collected, HandlerFound: true}
 	}
 	// if not then "ALL"
-	if handler := node.handlers["ALL"]; handler != nil {
+	if routeHandlers := node.handlers["ALL"]; routeHandlers != nil {
 		if !copied {
 			collected = append([]HandlerFunction{}, collected...)
 		}
-		collected = append(collected, handler)
+		collected = append(collected, routeHandlers...)
 		return &RouteMatch{Params: params, Handler: collected, HandlerFound: true}
 	}
 
